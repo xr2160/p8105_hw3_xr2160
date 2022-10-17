@@ -1,23 +1,80 @@
 ---
 title: "P8105_hw3_REN XIN"
 output: github_document
-date: "2022-10-12"
+date: "2022-10-15"
 ---
 ```{r}
 library(tidyverse)
 library(readxl)
 library(readr)
 library(dplyr)
-library(p8105.datasets)
 library(ggplot2)
 ```
-
-```{r}
 devtools::install_github("p8105/p8105.datasets",force = TRUE)
+```{r}
+library(p8105.datasets)
 data("instacart")
 ```
 
+### Problem 1 copy from Jeff
 
+#### Read in the data
+
+```{r}
+instacart = 
+  instacart %>% 
+  as_tibble(instacart)
+```
+
+#### Answer questions about the data
+
+This dataset contains `r nrow(instacart)` rows and `r ncol(instacart)` columns, with each row resprenting a single product from an instacart order. Variables include identifiers for user, order, and product; the order in which each product was added to the cart. There are several order-level variables, describing the day and time of the order, and number of days since prior order. Then there are several item-specific variables, describing the product name (e.g. Yogurt, Avocado), department (e.g. dairy and eggs, produce), and aisle (e.g. yogurt, fresh fruits), and whether the item has been ordered by this user in the past. In total, there are `r instacart %>% select(product_id) %>% distinct %>% count` products found in `r instacart %>% select(user_id, order_id) %>% distinct %>% count` orders from `r instacart %>% select(user_id) %>% distinct %>% count` distinct users.
+
+Below is a table summarizing the number of items ordered from aisle. In total, there are 134 aisles, with fresh vegetables and fresh fruits holding the most items ordered by far.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  arrange(desc(n))
+```
+
+Next is a plot that shows the number of items ordered in each aisle. Here, aisles are ordered by ascending number of items.
+
+```{r}
+instacart %>% 
+  count(aisle) %>% 
+  filter(n > 10000) %>% 
+  mutate(aisle = fct_reorder(aisle, n)) %>% 
+  ggplot(aes(x = aisle, y = n)) + 
+  geom_point() + 
+  labs(title = "Number of items ordered in each aisle") +
+  theme(axis.text.x = element_text(angle = 60, hjust = 1))
+
+```
+
+Our next table shows the three most popular items in aisles `baking ingredients`, `dog food care`, and `packaged vegetables fruits`, and includes the number of times each item is ordered in your table.
+
+```{r}
+instacart %>% 
+  filter(aisle %in% c("baking ingredients", "dog food care", "packaged vegetables fruits")) %>%
+  group_by(aisle) %>% 
+  count(product_name) %>% 
+  mutate(rank = min_rank(desc(n))) %>% 
+  filter(rank < 4) %>% 
+  arrange(desc(n)) %>%
+  knitr::kable()
+```
+
+Finally is a table showing the mean hour of the day at which Pink Lady Apples and Coffee Ice Cream are ordered on each day of the week. This table has been formatted in an untidy manner for human readers. Pink Lady Apples are generally purchased slightly earlier in the day than Coffee Ice Cream, with the exception of day 5.
+
+```{r}
+instacart %>%
+  filter(product_name %in% c("Pink Lady Apples", "Coffee Ice Cream")) %>%
+  group_by(product_name, order_dow) %>%
+  summarize(mean_hour = mean(order_hour_of_day)) %>%
+  spread(key = order_dow, value = mean_hour) %>%
+  knitr::kable(digits = 2)
+```
 
 Problem 2:
 
@@ -51,12 +108,11 @@ ggplot(Accel_2,aes(x=activity_nb, y=count , color = day ))+
 ```
 
 Description: 
-The Accel_2 has  'nrow(Accel_2)' row and 'ncol(Accel_2)'  columns.The variables included week, day_id, day,sum, activity_nb, counnt. There are 'nrow(Accel_2)' observations in total. There are no apparent trend. 
+The Accel_2 has  'nrow(Accel_2)' row and 'ncol(Accel_2)'  columns.The variables included week, day_id, day,sum, activity_nb, counnt. There are 'nrow(Accel_2)' observations in total. There are no apparent trend.
 
+devtools::install_github("p8105/p8105.datasets")
 Problem 3
-```{r}
-devtools::install_github("p8105/p8105.datasets", force = TRUE)
-```
+devtools::install_github("p8105/p8105.datasets")
 ```{r}
 library(p8105.datasets)
 data("ny_noaa")
@@ -64,6 +120,7 @@ data("ny_noaa")
 ```{r}
 nrow(ny_noaa)
 ncol(ny_noaa)
+
 ```
 
 Description: 
@@ -72,7 +129,20 @@ This dataset(ny_noaa) has 'nrow(ny_noaa)' row and 'ncol(ny_noaa)'  columns. Ther
 
 ```{r}
 ny_noaa_clearn = separate(ny_noaa,date, into= c("year","month",'day'),sep= "-")
+ny_noaa_clearn
+```
+
+
+```{r}
+ny_noaa_clearn=ny_noaa_clearn%>% 
+  mutate(
+    prcp = prcp / 10,
+    month = as.integer(month),
+    tmax = as.numeric(tmax) / 10, 
+    tmin = as.numeric(tmin) / 10
+    )
 ny_noaa_snow = as.data.frame(table(ny_noaa_clearn$snow))
+ny_noaa_snow
 ```
 Description: 
 the most commonly observed values is O, which appear 2008508 times.The reason why 0 is the most commonly is the weather of snow and low temperature are unusual in one year.
@@ -82,10 +152,33 @@ Ny_noaa_Jan and July
 ```{r}
 ny_noaa_clearn= ny_noaa_clearn %>% 
   mutate(
-  month=as.double(month),
-  year=as.double(year)
-)
+  month=as.numeric(month),
+  year=as.numeric(year),
+  tmax=as.numeric(tmax)) 
+
 ny_noaa_filt=ny_noaa_clearn %>% 
-  filter(month==1|month==7)
+  filter(month == 1 | month == 7) %>%
+  group_by(year, month, id ) %>%
+  mutate(month=factor(month, levels = c(1,7))) %>% 
+  summarize(M_tmax = mean(tmax,na.rm = TRUE))
+a=ny_noaa_filt %>% 
+  ggplot(aes(x = year, y = M_tmax, color = month)) + geom_point()
+a
+
+```
+Description: According to the graph we can see that the temperature difference between January and July is significant and that there is no overlap between the two temperature zones. The temperature tmax range for January is between -10 and 10, and the temperature tmax range for July is between 20 and 35. The January anomaly has a temperature value close to -18. The July anomaly has a temperature value close to 14.
+ 
+```{r}
+library(patchwork)
+library(ggridges)
+pic1 = ny_noaa_clearn %>% 
+ ggplot(aes(x = tmin, y = tmax)) + geom_hex() 
+
+pic2=ny_noaa_clearn %>% 
+     filter(snow > 0 & snow < 100 ) %>% 
+     mutate(year = as.character(year)) %>% 
+   ggplot(aes(x = year, y = snow)) +  geom_boxplot()
+   pic_total=pic1/pic2 
+   pic_total
 ```
  
